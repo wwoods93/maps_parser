@@ -51,7 +51,7 @@ class PMapParser
             int none = 0;
         };
 
-        PMapParser(std::string proc);
+        PMapParser(std::string proc, int& run);
         void execCommand();
         long convertStr(std::string input);
         long convertHex(std::string hexString);
@@ -64,13 +64,13 @@ class PMapParser
         void countMode(Permissions& perms);
         void writeOutput(const int& pos, std::vector<MapEntries>& mapEntries);
         void computeAvgs(int& elem);
-        void writeMacros(std::vector<MapEntries>& mapEntries, const Permissions& perms);
+        void writeMacros(std::vector<MapEntries>& mapEntries, const Permissions& perms, int& run);
         void sumTotals(long& totalB, long& totalR, long& totalD);
 };
 
-void getPIDs();
-std::vector<std::string> vectorizePIDs();
-void writeTotals(const long& totalB, const long& totalR, const long& totalD);
+void getPIDs(int& run);
+std::vector<std::string> vectorizePIDs(int& run);
+void writeTotals(const long& totalB, const long& totalR, const long& totalD, int& run);
 
 
 #endif

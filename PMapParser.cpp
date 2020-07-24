@@ -10,10 +10,11 @@
 #include <iomanip>
 #include "PMapParser.hpp"
 
-PMapParser::PMapParser(std::string proc)
+PMapParser::PMapParser(std::string proc, int& run)
 {
+    std::string c = std::to_string(run);
     pid = proc;
-    maptxt = "pidMaps/" + pid + "pmap.txt";
+    maptxt = "pidMaps" + c + "/" + pid + "pmap.txt";
     mapCmd = "pmap -x " + pid + " > " + maptxt;
 }
 
@@ -117,12 +118,11 @@ void PMapParser::computeAvgs(int& elem)
     avgDirty /= (elem - 1);
 }
 
-void PMapParser::writeMacros(std::vector<MapEntries>& mapEntries, const Permissions& perms)
+void PMapParser::writeMacros(std::vector<MapEntries>& mapEntries, const Permissions& perms, int& run)
 {
+    std::string c = std::to_string(run);
     std::ofstream pmapMacros;
-    std::string macrostxt = "IndMacros.txt";
-    std::string dir = "output/";
-    std::string fileName = dir + pid + macrostxt;
+    std::string fileName = "output" + c + "/" + pid + "IndMacros.txt";
     pmapMacros.open(fileName);
     pmapMacros << "Readable:        " << perms.r << '\n';
     pmapMacros << "Writable:        " << perms.w << '\n';
@@ -149,28 +149,31 @@ void PMapParser::sumTotals(long& totalB, long& totalR, long& totalD)
 
 // free functions
 
-void getPIDs()
+void getPIDs(int& run)
 {
-    std::string program;
-    std::string pidof = "pidof ";
-    std::string pidFile = " > pids.txt";
-    std::string printPIDs = "cat pids.txt";
-    std::cout << "Executing pidof command.\n";
+    std::string c = std::to_string(run);
     std::cout << "Enter name of running program:\n";
+    std::string program;
     std::cin >> program;
-    std::string pidCmd = pidof + program + pidFile;
+    std::string file = "pids" + c + ".txt";
+    std::string catCmd = "cat " + file;
+    std::string pidCmd = "pidof "+ program + " > " + file;
+    std::string cmdOut = "mkdir pidMaps" + c;
+    std::string prgOut = "mkdir output" + c;
     std::system(pidCmd.c_str());
-    std::system(printPIDs.c_str());
-    std::system("mkdir pidMaps");
-    std::system("mkdir output");
+    std::system(catCmd.c_str());
+    std::system(cmdOut.c_str());
+    std::system(prgOut.c_str());
 }
 
-std::vector<std::string> vectorizePIDs()
+std::vector<std::string> vectorizePIDs(int& run)
 {
+    std::string c = std::to_string(run);
     std::vector<std::string> pids;
     pids.push_back("");
     int pos = 0;
-    std::ifstream pidFile("pids.txt");
+    std::string file = "pids" + c + ".txt";
+    std::ifstream pidFile(file.c_str());
     for (std::string line; std::getline(pidFile, line);)
     {
         for(int c = 0; c < line.length(); ++c)
@@ -185,10 +188,12 @@ std::vector<std::string> vectorizePIDs()
     return pids;
 }
 
-void writeTotals(const long& totalB, const long& totalR, const long& totalD)
+void writeTotals(const long& totalB, const long& totalR, const long& totalD, int& run)
 {
+    std::string c = std::to_string(run);
     std::ofstream appTotals;
-    appTotals.open("appTotals.txt");
+    std::string totalFile = "appTotals" + c + ".txt";
+    appTotals.open(totalFile.c_str());
     appTotals << std::setw(12) << "Bytes Total" << std::setw(12) << "RSS Total" << std::setw(12) << "Dirty Total" << '\n';
     appTotals << std::setw(12) << totalB << std::setw(12) << totalR << std::setw(12) << totalD << '\n';
     appTotals.close();
