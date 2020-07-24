@@ -63,8 +63,9 @@ class PMapParser
         std::string parseMapping();
         void countMode(Permissions& perms);
         void writeOutput(const int& pos, std::vector<MapEntries>& mapEntries);
+        void computeAvgs(int& elem);
         void writeMacros(std::vector<MapEntries>& mapEntries, const Permissions& perms);
-        void printOutput(const Permissions& perms);
+        void sumTotals(long& totalB, long& totalR, long& totalD);
 };
 
 void getPIDs();

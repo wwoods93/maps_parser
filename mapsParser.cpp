@@ -23,6 +23,7 @@ int main()
         std::vector <PMapParser::MapEntries> mapEntries;
         PMapParser::Permissions perms;
         PMapParser m(pids[count]);
+
         m.execCommand();
         std::ifstream pmapFile(m.maptxt.c_str());
         pmapFile.ignore(1024, '\n');
@@ -44,12 +45,15 @@ int main()
                 mapEntries[elem].addr = m.convertHex(m.hex);
                 mapEntries[elem].size = m.convertStr(m.bytes);
                 m.avgBytes += mapEntries[elem].size;
+
                 m.parseRSS();
                 mapEntries[elem].rss = m.convertStr(m.RSS);
                 m.avgRSS += mapEntries[elem].rss;
+
                 m.parseDirty();
                 mapEntries[elem].dirty = m.convertStr(m.dirty);
                 m.avgDirty += mapEntries[elem].dirty;
+
                 m.parseMode();
                 mapEntries[elem].modes = m.mode;
                 m.countMode(perms);
@@ -57,15 +61,12 @@ int main()
             }
             ++elem;
         }
-        m.avgBytes /= (elem - 1);
-        m.avgRSS /= (elem - 1);
-        m.avgDirty /= (elem - 1);
+        m.computeAvgs(elem);
         m.writeMacros(mapEntries, perms);
-
-        totalB += m.totalBytes;
-        totalR += m.totalRSS;
-        totalD += m.totalDirty;
+        m.sumTotals(totalB, totalR, totalD);
     }
     writeTotals(totalB, totalR, totalD);
+    std::system("rm -rf pidMaps");
+
     return 0;
 }
