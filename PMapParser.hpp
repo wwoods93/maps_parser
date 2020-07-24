@@ -22,6 +22,9 @@ class PMapParser
         std::size_t dPos = 0;
         std::string entry;
         std::string pid;
+        std::string mode;
+        std::string maptxt;
+        std::string mapCmd;
         std::string bytes;
         std::string RSS;
         std::string dirty;
@@ -48,7 +51,7 @@ class PMapParser
             int none = 0;
         };
 
-        void getPIDs();
+        PMapParser(std::string proc);
         void execCommand();
         long convertStr(std::string input);
         long convertHex(std::string hexString);
@@ -56,12 +59,17 @@ class PMapParser
         void parseAddress();
         void parseRSS();
         void parseDirty();
-        std::string parseMode();
+        void parseMode();
         std::string parseMapping();
-        void countMode(std::string mode, Permissions& perms);
+        void countMode(Permissions& perms);
         void writeOutput(const int& pos, std::vector<MapEntries>& mapEntries);
-        void writeMacros(std::vector<MapEntries>& mapEntries);
+        void writeMacros(std::vector<MapEntries>& mapEntries, const Permissions& perms);
         void printOutput(const Permissions& perms);
 };
+
+void getPIDs();
+std::vector<std::string> vectorizePIDs();
+void writeTotals(const long& totalB, const long& totalR, const long& totalD);
+
 
 #endif

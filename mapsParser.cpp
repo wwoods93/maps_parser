@@ -11,55 +11,61 @@
 
 int main()
 {
-    PMapParser pmap;
-    PMapParser::Permissions perms;
-    std::vector <PMapParser::MapEntries> mapEntries;
-    pmap.getPIDs();
-    pmap.execCommand();
-    std::ifstream pmapFile("pmap.txt");
-    std::ifstream pidFile("pids.txt");
-    pmapFile.ignore(1024, '\n');
-    pmapFile.ignore(1024, '\n');
-    int elem = 0;
+    long totalB = 0;
+    long totalR = 0;
+    long totalD = 0;
+    std::vector<long> setTotals(3, 0);
+    getPIDs();
+    std::vector<std::string> pids = vectorizePIDs();
 
-    for (pmap.entry; std::getline(pmapFile, pmap.entry);)
+    for (int count = 0; count < pids.size(); ++count)
     {
-        if (pmap.entry.substr(0, 4) == "----")
-            continue;
+        std::vector <PMapParser::MapEntries> mapEntries;
+        PMapParser::Permissions perms;
+        PMapParser m(pids[count]);
+        m.execCommand();
+        std::ifstream pmapFile(m.maptxt.c_str());
+        pmapFile.ignore(1024, '\n');
+        pmapFile.ignore(1024, '\n');
+        int elem = 0;
 
-        else if(pmap.entry.find("total kB") != std::string::npos)
+        for (m.entry; std::getline(pmapFile, m.entry);)
         {
-            pmap.parseTotal();
-        }
-        else
-        {
-            mapEntries.push_back(PMapParser::MapEntries());
-            pmap.parseAddress();
-            if(mapEntries[elem -1].addr == pmap.convertHex(pmap.hex))
+            if (m.entry.substr(0, 4) == "----")
                 continue;
-            mapEntries[elem].addr = pmap.convertHex(pmap.hex);
-            mapEntries[elem].size = pmap.convertStr(pmap.bytes);
-            pmap.avgBytes += mapEntries[elem].size;
-            pmap.parseRSS();
-            mapEntries[elem].rss = pmap.convertStr(pmap.RSS);
-            pmap.avgRSS += mapEntries[elem].rss;
-            pmap.parseDirty();
-            mapEntries[elem].dirty = pmap.convertStr(pmap.dirty);
-            pmap.avgDirty += mapEntries[elem].dirty;
-
-            std::string mode = pmap.parseMode();
-            mapEntries[elem].modes = mode;
-            pmap.countMode(mode, perms);
-            mapEntries[elem].map = pmap.parseMapping();
+            else if(m.entry.substr(0, 5) == "total")
+                m.parseTotal();
+            else
+            {
+                mapEntries.push_back(PMapParser::MapEntries());
+                m.parseAddress();
+                if(mapEntries[elem -1].addr == m.convertHex(m.hex))
+                    continue;
+                mapEntries[elem].addr = m.convertHex(m.hex);
+                mapEntries[elem].size = m.convertStr(m.bytes);
+                m.avgBytes += mapEntries[elem].size;
+                m.parseRSS();
+                mapEntries[elem].rss = m.convertStr(m.RSS);
+                m.avgRSS += mapEntries[elem].rss;
+                m.parseDirty();
+                mapEntries[elem].dirty = m.convertStr(m.dirty);
+                m.avgDirty += mapEntries[elem].dirty;
+                m.parseMode();
+                mapEntries[elem].modes = m.mode;
+                m.countMode(perms);
+                mapEntries[elem].map = m.parseMapping();
+            }
+            ++elem;
         }
-        ++elem;
-    }
-    pmap.avgBytes /= (elem - 1);
-    pmap.avgRSS /= (elem - 1);
-    pmap.avgDirty /= (elem - 1);
-    pmap.writeOutput(elem, mapEntries);
-    pmap.writeMacros(mapEntries);
-    pmap.printOutput(perms);
+        m.avgBytes /= (elem - 1);
+        m.avgRSS /= (elem - 1);
+        m.avgDirty /= (elem - 1);
+        m.writeMacros(mapEntries, perms);
 
+        totalB += m.totalBytes;
+        totalR += m.totalRSS;
+        totalD += m.totalDirty;
+    }
+    writeTotals(totalB, totalR, totalD);
     return 0;
 }

@@ -10,94 +10,69 @@
 #include <iomanip>
 #include "PMapParser.hpp"
 
-
-void PMapParser::getPIDs()
-{
-    std::string program;
-    std::string pidof = "pidof ";
-    std::string pidFile = " > pids.txt";
-    std::string printPIDs = "cat pids.txt";
-    std::cout << "Executing pidof command.\n";
-    std::cout << "Enter name of running program:\n";
-    std::cin >> program;
-    std::string pidCmd = pidof + program + pidFile;
-    std::system(pidCmd.c_str());
-    std::system(printPIDs.c_str());
+PMapParser::PMapParser(std::string proc) {
+    pid = proc;
+    maptxt = "pidMaps/" + pid + "pmap.txt";
+    mapCmd = "pmap -x " + pid + " > " + maptxt;
 }
 
-void PMapParser::execCommand()
-{
-    std::string pmapx = "pmap -x ";
-    std::string pipeFile = " > pmap.txt";
-    std::cout << "Executing " << pmapx << "command.\n";
-    std::cout << "Enter PID of a running process:\n";
-    std::cin >> pid;
-    std::string mapCmd = pmapx + pid + pipeFile;
+void PMapParser::execCommand() {
     std::system(mapCmd.c_str());
 }
 
-long PMapParser::convertStr(std::string input)
-{
+long PMapParser::convertStr(std::string input) {
     std::stringstream inputSS(input);
     long outputLong = 0;
     inputSS >> outputLong;
     return outputLong;
 }
 
-long PMapParser::convertHex(std::string hexString)
-{
+long PMapParser::convertHex(std::string hexString) {
     std::stringstream hex(hexString);
     long decAddr = 0;
     hex >> std::hex >> decAddr;
     return decAddr;
 }
 
-void PMapParser::parseTotal()
-{
+void PMapParser::parseTotal() {
     std::size_t tbPos = entry.find_first_of(NUM);
-    std::string tb = entry.substr(tbPos, entry.find(' ', tbPos) - tbPos);
-    totalBytes = convertStr(tb);
+    const std::string tb = entry.substr(tbPos, entry.find(' ', tbPos) - tbPos);
     std::size_t trPos = entry.find_first_of(NUM, (tbPos + tb.length()));
-    std::string tr = entry.substr(trPos, entry.find(' ', trPos) - trPos);
-    totalRSS = convertStr(tr);
+    const std::string tr = entry.substr(trPos, entry.find(' ', trPos) - trPos);
     std::size_t tdPos = entry.find_first_of(NUM, (trPos + tr.length()));
-    std::string td = entry.substr(tdPos, entry.find(' ', tdPos) - tdPos);
+    const std::string td = entry.substr(tdPos, entry.find(' ', tdPos) - tdPos);
+    totalBytes = convertStr(tb);
+    totalRSS = convertStr(tr);
     totalDirty = convertStr(td);
 }
 
-void PMapParser::parseAddress()
-{
+void PMapParser::parseAddress() {
     hex = entry.substr(0, entry.find(' '));
     bPos = entry.find_first_of(NUM, hex.length() + 1);
     bytes = entry.substr(bPos, entry.find(' ', bPos) - bPos);
 }
 
-void PMapParser::parseRSS()
-{
+void PMapParser::parseRSS() {
     rPos = entry.find_first_of(NUM, bPos + bytes.length());
     RSS = entry.substr(rPos, entry.find(' ', rPos) - rPos);
 }
 
-void PMapParser::parseDirty()
-{
+void PMapParser::parseDirty() {
     dPos = entry.find_first_of(NUM, rPos + RSS.length());
     dirty = entry.substr(dPos, entry.find(' ', dPos) - dPos);
 }
 
-std::string PMapParser::parseMode()
-{
-    return entry.substr(entry.find_first_of("-r"), 5);
+void PMapParser::parseMode() {
+    mode = entry.substr(entry.find_first_of("-r"), 5);
 }
 
-std::string PMapParser::parseMapping()
-{
+std::string PMapParser::parseMapping() {
     std::size_t mEnd = entry.find_first_of("-r") + 5;
     std::size_t mPos = entry.find_first_not_of(' ', mEnd);
     return entry.substr(mPos, entry.size() - mPos);
 }
 
-void PMapParser::countMode(std::string mode, Permissions& perms)
-{
+void PMapParser::countMode(Permissions& perms) {
     if (mode[0] == 'r')
         ++perms.r;
     if (mode[1] == 'w')
@@ -112,34 +87,41 @@ void PMapParser::countMode(std::string mode, Permissions& perms)
         ++perms.none;
 }
 
-void PMapParser::writeOutput(const int& pos, std::vector<MapEntries>& mapEntries)
-{
+void PMapParser::writeOutput(const int& pos, std::vector<MapEntries>& mapEntries) {
     std::ofstream parsedPmap;
     std::string txt = ".txt";
     std::string fileName = pid + txt;
     parsedPmap.open(fileName);
-    for (int i = 0; i < pos -1; ++i)
-    {
+    for (int i = 0; i < pos -1; ++i) {
         parsedPmap << std::setw(12) << mapEntries[i].size << std::setw(12) << mapEntries[i].rss 
                    << std::setw(12) << mapEntries[i].dirty << '\n';
     }
     parsedPmap.close();
 }
 
-void PMapParser::writeMacros(std::vector<MapEntries>& mapEntries)
-{
-    std::ofstream pmapTotals;
-    std::string totalstxt = "totals.txt";
-    std::string fileName = pid + totalstxt;
-    pmapTotals.open(fileName);
-    pmapTotals << std::setw(12) << "Stat:" << std::setw(12) << "Bytes" << std::setw(12) << "RSS" << std::setw(12) << "Dirty" << '\n';
-    pmapTotals << std::setw(12) << "Total:" << std::setw(12) << totalBytes << std::setw(12) << totalRSS << std::setw(12) << totalDirty << '\n';
-    pmapTotals << std::setw(12) << "Average:" << std::setw(12) << avgBytes << std::setw(12) << avgRSS << std::setw(12) << avgDirty << '\n';
-    pmapTotals.close();
+void PMapParser::writeMacros(std::vector<MapEntries>& mapEntries, const Permissions& perms) {
+    std::ofstream pmapMacros;
+    std::string macrostxt = "IndMacros.txt";
+    std::string dir = "output/";
+    std::string fileName = dir + pid + macrostxt;
+    pmapMacros.open(fileName);
+    pmapMacros << "Readable:        " << perms.r << '\n';
+    pmapMacros << "Writable:        " << perms.w << '\n';
+    pmapMacros << "Executable:      " << perms.x << '\n';
+    pmapMacros << "Sharable:        " << perms.s << '\n';
+    pmapMacros << "Private:         " << perms.p << '\n';
+    pmapMacros << "No permissions:  " << perms.none << "\n\n";
+    pmapMacros << std::setw(30) << "Total size:               " << std::setw(10) << totalBytes << '\n';
+    pmapMacros << std::setw(30) << "Total RSS:                " << std::setw(10) << totalRSS << '\n';
+    pmapMacros << std::setw(30) << "Total dirty pages:        " << std::setw(10) << totalDirty << "\n\n";
+    pmapMacros << std::setw(30) << "Average total size:       " << std::setw(10) << avgBytes << '\n';
+    pmapMacros << std::setw(30) << "Average RSS:              " << std::setw(10) << avgRSS << '\n';
+    pmapMacros << std::setw(30) << "Average dirty pages size: " << std::setw(10) << avgDirty << '\n';
+    pmapMacros << std::endl;
+    pmapMacros.close();
 }
 
-void PMapParser::printOutput(const Permissions& perms)
-{
+void PMapParser::printOutput(const Permissions& perms) {
     std::cout << "____________________________" << '\n';
     std::cout << "Readable:        " << perms.r << '\n';
     std::cout << "Writable:        " << perms.w << '\n';
@@ -153,4 +135,51 @@ void PMapParser::printOutput(const Permissions& perms)
     std::cout << std::setw(30) << "Average total size:       " << std::setw(10) << avgBytes << '\n';
     std::cout << std::setw(30) << "Average RSS:              " << std::setw(10) << avgRSS << '\n';
     std::cout << std::setw(30) << "Average dirty pages size: " << std::setw(10) << avgDirty << '\n';
+}
+
+// free functions
+
+void getPIDs() {
+    std::string program;
+    std::string pidof = "pidof ";
+    std::string pidFile = " > pids.txt";
+    std::string printPIDs = "cat pids.txt";
+    std::string mkdir1 = "mkdir pidMaps";
+    std::string mkdir2 = "mkdir output";
+    std::cout << "Executing pidof command.\n";
+    std::cout << "Enter name of running program:\n";
+    std::cin >> program;
+    std::string pidCmd = pidof + program + pidFile;
+    std::system(pidCmd.c_str());
+    std::system(printPIDs.c_str());
+    std::system(mkdir1.c_str());
+    std::system(mkdir2.c_str());
+
+}
+
+std::vector<std::string> vectorizePIDs() {
+    std::vector<std::string> pids;
+    pids.push_back("");
+    int pos = 0;
+    std::ifstream pidFile("pids.txt");
+    for (std::string line; std::getline(pidFile, line);) {
+        for(int c = 0; c < line.length(); ++c)
+            if(isdigit(line[c]))
+                pids[pos] += line[c];
+            else {
+                pids.push_back("");
+                ++pos;
+            }
+    }
+    return pids;
+}
+
+void writeTotals(const long& totalB, const long& totalR, const long& totalD)
+{
+    std::ofstream appTotals;
+    std::string totalstxt = "appTotals.txt";
+    appTotals.open(totalstxt.c_str());
+    appTotals << std::setw(12) << "Bytes Total" << std::setw(12) << "RSS Total" << std::setw(12) << "Dirty Total" << '\n';
+    appTotals << std::setw(12) << totalB << std::setw(12) << totalR << std::setw(12) << totalD << '\n';
+    appTotals.close();
 }
