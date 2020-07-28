@@ -1,5 +1,22 @@
 /*
  *  pmapParser.cpp
+ *
+ *
+ *  ***Desgined and tested on an Ubuntu 18.04 Linux Distribution.  For use ONLY on Linux Systems.***
+ *
+ *  mapsParser.cpp employs the PMapParser describes in the accompanying header and implementation files.
+ *
+ *  This program is designed to execute the PMapParser functions a set number of times.
+ *  This can be adjusted by adjusting NUM_RUNS.  Default NUM_RUNS is 10.
+ *
+ *
+ *  Output can be managed by adjusting the removeDir(), writeOutput(), writeMacros(), and writeTotals() functions.
+ *
+ *  Build the program (g++):    g++ -o run PMapParser.hpp PMapParser.cpp mapsParser.cpp
+ *
+ *  Execute from command line:  ./run
+ *
+ *  Delete all output files:    rm -rf app* out* pid*
  */
 
 #include <iostream>
@@ -11,66 +28,52 @@
 
 int main()
 {
-    for (int run = 0; run < 2; ++run)
+    const int NUM_RUNS = 1;
+    std::cout << "Enter name of running program:\n";
+    std::string program;
+    std::cin >> program;
+    for (int run = 0; run < NUM_RUNS; ++run)
     {
-        long totalB = 0;
-        long totalR = 0;
-        long totalD = 0;
-        std::vector<long> setTotals(3, 0);
-        getPIDs(run);
+        long tB = 0;
+        long tR = 0;
+        long tD = 0;
+        getPIDs(run, program);
         std::vector<std::string> pids = vectorizePIDs(run);
         std::vector<std::string> pids0;
         pids0.reserve(pids.size());
 
-        for (int count = 0; count < pids.size(); ++count)
+        for (int n = 0; n < pids.size(); ++n)
         {
-            std::vector <PMapParser::MapEntries> mapEntries;
-            PMapParser::Permissions perms;
-            PMapParser m(pids[count], run);
-
+            PMapParser m(pids[n], run);
             m.execCommand();
-            std::ifstream pmapFile(m.maptxt.c_str());
-            pmapFile.ignore(1024, '\n');
-            pmapFile.ignore(1024, '\n');
-            int elem = 0;
+            std::ifstream ifs(m.maptxt.c_str());
+            ifs.ignore(1024, '\n');
+            ifs.ignore(1024, '\n');
 
-            for (m.entry; std::getline(pmapFile, m.entry);)
+            for (m.entry; std::getline(ifs, m.entry);)
             {
-                if (m.entry.substr(0, 4) == "----")
+                if (m.foundVoid())
                     continue;
-                else if(m.entry.substr(0, 5) == "total")
+                else if(m.foundTotal())
                     m.parseTotal();
                 else
                 {
-                    mapEntries.push_back(PMapParser::MapEntries());
                     m.parseAddress();
-                    if(mapEntries[elem -1].addr == m.convertHex(m.hex))
+                    if(m.foundHeader())
                         continue;
-                    mapEntries[elem].addr = m.convertHex(m.hex);
-                    mapEntries[elem].size = m.convertStr(m.bytes);
-                    m.avgBytes += mapEntries[elem].size;
-
                     m.parseRSS();
-                    mapEntries[elem].rss = m.convertStr(m.RSS);
-                    m.avgRSS += mapEntries[elem].rss;
-
                     m.parseDirty();
-                    mapEntries[elem].dirty = m.convertStr(m.dirty);
-                    m.avgDirty += mapEntries[elem].dirty;
-
                     m.parseMode();
-                    mapEntries[elem].modes = m.mode;
-                    m.countMode(perms);
-                    mapEntries[elem].map = m.parseMapping();
+                    m.parseMapping();
                 }
-                ++elem;
+                ++m.elem;
             }
-            m.computeAvgs(elem);
-            m.writeMacros(mapEntries, perms, run);
-            m.sumTotals(totalB, totalR, totalD);
+            m.computeAvgs();
+            m.writeMacros(run);
+            m.sumTotals(tB, tR, tD);
         }
-        writeTotals(totalB, totalR, totalD, run);
-        std::system("rm -rf pidMaps");
+        writeTotals(tB, tR, tD, run);
+        removeDir(run);
         pids0 = pids;
     }
     return 0;
