@@ -1,4 +1,4 @@
-/*
+/**
  *  PMapParser.hpp
  *
  *  ***Desgined and tested on an Ubuntu 18.04 Linux Distribution.  For use ONLY on Linux Systems.***
@@ -16,7 +16,7 @@
  *          - Parses and stores mapping size, resident set size (RSS), and dirty bytes size for each mapping in the process
  *          - Parses the [Mode] field of the output and counts the permissions (rwxsp) associated with each mapping
  *          - Parses and stores the file path associated with each mapping
- *          - NOTE: The parsed fields are stored in a vector of structs such that they may still be grouped by mapping, but
+ *          - note: The parsed fields are stored in a vector of structs such that they may still be grouped by mapping, but
  *            also that all entries for a particular field may be iterated through sequentially
  *
  *      - While parsing the output for each individual PID, totals across all PIDs are also calculated giving the entire

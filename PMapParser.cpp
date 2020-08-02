@@ -39,6 +39,12 @@
 #include <iomanip>
 #include "PMapParser.hpp"
 
+/**
+ *  Default Constructor
+ *
+ *  @param proc     PID in string form
+ *  @param run      Current iteration of test
+ */
 PMapParser::PMapParser(std::string proc, int& run)
 {
     std::string c = std::to_string(run);
@@ -47,21 +53,52 @@ PMapParser::PMapParser(std::string proc, int& run)
     mapCmd = "pmap -x " + pid + " > " + maptxt;
 }
 
+/**
+ *  execCommand()
+ *
+ *  Execute command formulated in ctor
+ *  Create file of raw output from command
+ *  
+ *  @return         Void
+ */
 void PMapParser::execCommand()
 {
     std::system(mapCmd.c_str());
 }
 
+
+/**
+ *  foundVoid()
+ *
+ *  Check for line missing memory address
+ *
+ *  @return         True if line is empty
+ */
 bool PMapParser::foundVoid()
 {
     return entry.substr(0, 5) == "-----";
 }
 
+/**
+ *  foundTotal()
+ *
+ *  Find line containing byte totals
+ *    
+ *  @return         True if line begings with "total"
+ */
 bool PMapParser::foundTotal()
 {
     return entry.substr(0, 5) == "total";
 }
 
+/**
+ *  convertStr()
+ *
+ *  Convert string to long
+ *  
+ *  @param  input      String from file to be converted
+ *  @return            String in long int form
+ */
 long PMapParser::convertStr(std::string input)
 {
     std::stringstream inputSS(input);
@@ -70,6 +107,14 @@ long PMapParser::convertStr(std::string input)
     return outputLong;
 }
 
+/**
+ *  convertHex()
+ *
+ *  Convert hex address to long
+ *
+ *  @param  hexString   Hex address to convert
+ *  @return             String in long int form
+ */
 long PMapParser::convertHex(std::string hexString)
 {
     std::stringstream hex(hexString);
@@ -78,6 +123,14 @@ long PMapParser::convertHex(std::string hexString)
     return decAddr;
 }
 
+/**
+ *  parseTotal()
+ *
+ *  Parse all elements of the "total" line
+ *  Collect and store totalBytes, totalRSS, totalDirty
+ *
+ *  @return         Void
+ */
 void PMapParser::parseTotal()
 {
     const std::size_t tbPos = entry.find_first_of(NUM);
@@ -91,11 +144,26 @@ void PMapParser::parseTotal()
     totalDirty = convertStr(td);
 }
 
+/**
+ *  foundHeader()
+ *
+ *  Find and ignore output header
+ *
+ *  @return         True if header is located
+ */
 bool PMapParser::foundHeader()
 {
     return mapEntries[elem -1].addr == convertHex(hex);
 }
 
+/**
+ *  parseAddress()
+ *
+ *  Parse and store hex address of each mapping (line)
+ *  Parse and store size of mapping
+ *  
+ *  @return         Void
+ */
 void PMapParser::parseAddress()
 {
     mapEntries.push_back(PMapParser::MapEntries());
@@ -107,6 +175,13 @@ void PMapParser::parseAddress()
     avgBytes += mapEntries[elem].size;
 }
 
+/**
+ *  parseRSS()
+ *
+ *  Parse and store resident set size (RSS) for each mapping
+ *  
+ *  @return         Void
+ */
 void PMapParser::parseRSS()
 {
     rPos = entry.find_first_of(NUM, bPos + bytes.length());
@@ -115,6 +190,13 @@ void PMapParser::parseRSS()
     avgRSS += mapEntries[elem].rss;
 }
 
+/**
+ *  parseDirty()
+ *
+ *  Parse and store number of dirty pages (in bytes) for each mapping
+ *  
+ *  @return         Void
+ */
 void PMapParser::parseDirty()
 {
     dPos  = entry.find_first_of(NUM, rPos + RSS.length());
@@ -123,6 +205,14 @@ void PMapParser::parseDirty()
     avgDirty += mapEntries[elem].dirty;
 }
 
+/**
+ *  parseMode()
+ *
+ *  Parse and store string of permissions for an individual mapping
+ *  Call countMode() method to count individual permissions
+ *
+ *  @return         Void
+ */
 void PMapParser::parseMode()
 {
     mode = entry.substr(entry.find_first_of("-r"), 5);
@@ -130,14 +220,13 @@ void PMapParser::parseMode()
     countMode();
 }
 
-void PMapParser::parseMapping()
-{
-    std::size_t mEnd = entry.find_first_of("-r") + 5;
-    std::size_t mPos = entry.find_first_not_of(' ', mEnd);
-    mapping = entry.substr(mPos, entry.size() - mPos);
-    mapEntries[elem].map = mapping;
-}
-
+/**
+ *  countMode()
+ *
+ *  Keep a running count of permissions for mappings within the current PID
+ *
+ *  @return         Void
+ */
 void PMapParser::countMode()
 {
     if (mode[0] == 'r')
@@ -154,6 +243,31 @@ void PMapParser::countMode()
         ++perms.none;
 }
 
+/**
+ *  parseMapping()
+ *
+ *  Parse and store string containing file path for each mapping
+ *  
+ *  @return         Void
+ */
+void PMapParser::parseMapping()
+{
+    std::size_t mEnd = entry.find_first_of("-r") + 5;
+    std::size_t mPos = entry.find_first_not_of(' ', mEnd);
+    mapping = entry.substr(mPos, entry.size() - mPos);
+    mapEntries[elem].map = mapping;
+}
+
+/**
+ *  writeOutput()
+ *
+ *  Initialize and populate a file with cleaned output
+ *  File will contain mapping size, RSS size, and dirty bytes size
+ *  Whitespace delineated, each mapping on a new line, etraneous lines and data removed
+ *  File name of the form [PID].txt
+ *  
+ *  @return         Void
+ */
 void PMapParser::writeOutput()
 {
     std::ofstream parsedPmap;
@@ -166,6 +280,13 @@ void PMapParser::writeOutput()
     parsedPmap.close();
 }
 
+/**
+ *  computeAvgs()
+ *
+ *  Compute average mapping size, RSS size, and dirty bytes size for an individual mapping in a PID
+ *
+ *  @return         Void
+ */
 void PMapParser::computeAvgs()
 {
     avgBytes /= (elem - 1);
@@ -173,6 +294,18 @@ void PMapParser::computeAvgs()
     avgDirty /= (elem - 1);
 }
 
+/**
+ *  writeMacros()
+ *
+ *  Initialize and populate a file with statistics for an individual PID
+ *  File lists total permissions counts across all mappings in the PID
+ *  Also listed are total and average values for mapping size, RSS size, and dirty bytes size
+ *  Files will be found in the newly located output/ directory
+ *  File name of the form [PID]IndMacros.txt
+ *
+ *  @param run      Current iteration of test
+ *  @return         Void
+ */
 void PMapParser::writeMacros(int& run)
 {
     std::string c = std::to_string(run);
@@ -194,6 +327,17 @@ void PMapParser::writeMacros(int& run)
     pmapMacros.close();
 }
 
+/**
+ *  sumTotals()
+ *
+ *  Sum total bytes, total RSS, and total dirty bytes across all PIDs
+ *  for the running program selected for testing
+ * 
+ *  @param totalB   Long sum total of mapping sizes  
+ *  @param totalR   Long sum total of RSS sizes
+ *  @param totalD   Long sum total of dirty bytes sizes
+ *  @return         Void   
+ */
 void PMapParser::sumTotals(long& totalB, long& totalR, long& totalD)
 {
     totalB += totalBytes;
@@ -201,8 +345,18 @@ void PMapParser::sumTotals(long& totalB, long& totalR, long& totalD)
     totalD += totalDirty;
 }
 
-// free functions
+/************************************ Free Functions ***************************************/
 
+/**
+ *  getPIDs()
+ *
+ *  Get PIDs of running program with pidof command
+ *  Create pidMaps and output directories
+ *  
+ *  @param run      Current iteration of test
+ *  @param program  Name of running program specified by user 
+ *  @return         Void   
+ */
 void getPIDs(int& run, std::string& program)
 {
     std::string c = std::to_string(run);
@@ -217,6 +371,14 @@ void getPIDs(int& run, std::string& program)
     std::system(prgOut.c_str());
 }
 
+/**
+ *  vectorizePIDs()
+ *
+ *  Create vector of PIDs from output file generated by getPIDs() (pidof command)
+ *  
+ *  @param run      Current iteration of test
+ *  @return         Vector of strings containing PIDs of program chosen for testing
+ */
 std::vector<std::string> vectorizePIDs(int& run)
 {
     std::string c = std::to_string(run);
@@ -239,6 +401,19 @@ std::vector<std::string> vectorizePIDs(int& run)
     return pids;
 }
 
+/**
+ *  writeTotals()
+ *
+ *  Initialize and populate a file containing program-wide totals
+ *  File will contain sum of mapping size, RSS size, and dirty bytes size for all PIDs of a running program
+ *  File name of the form appTotals[run].txt where c is the run is the current iteration of the test
+ * 
+ *  @param totalB   Long sum total of mapping sizes  
+ *  @param totalR   Long sum total of RSS sizes
+ *  @param totalD   Long sum total of dirty bytes sizes
+ *  @param run      Current iteration of test
+ *  @return         Void   
+ */
 void writeTotals(const long& totalB, const long& totalR, const long& totalD, int& run)
 {
     std::string c = std::to_string(run);
@@ -250,6 +425,14 @@ void writeTotals(const long& totalB, const long& totalR, const long& totalD, int
     appTotals.close();
 }
 
+/**
+ *  removeDir()
+ * 
+ *  Remove extraneous directories generated by terminal commands
+ * 
+ *  @param run      Current iteration of test
+ *  @return         Void
+ */
 void removeDir(int& run)
 {
     std::string c = std::to_string(run);

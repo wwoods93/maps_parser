@@ -1,7 +1,7 @@
+# graph.py
+# Creates a bar graph depicting mapping size, RSS, and dirty bytes
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
-import re
 
 ramArray = []
 swapArray = []
@@ -22,7 +22,7 @@ df = pd.DataFrame({
     'Dirty': dirtyArray
 })
 
-plott = df.plot(kind = 'bar', stacked = True)
+plott = df.plot(kind='bar', stacked=True)
 plott.set_xlabel("Memory Locations")
 plott.set_ylabel("Size in Kb")
 plt.show()
